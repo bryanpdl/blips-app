@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
-import { createBlip, searchUsers, type SearchUserResult } from '../../lib/firebase/db';
+import { createBlip, searchUsers, type SearchUserResult, type Blip } from '../../lib/firebase/db';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -13,7 +13,7 @@ import { createNotification } from '../../lib/firebase/db';
 import MentionInput from '../common/MentionInput';
 
 interface BlipComposerProps {
-  onBlipCreated?: (blip: any) => void;
+  onBlipCreated?: (blip: Blip) => void;
 }
 
 export default function BlipComposer({ onBlipCreated }: BlipComposerProps) {

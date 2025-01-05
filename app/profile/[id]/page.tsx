@@ -18,7 +18,6 @@ import ProtectedRoute from '../../components/auth/ProtectedRoute';
 import Navbar from '../../components/navigation/Navbar';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Timestamp } from 'firebase/firestore';
 
 type TabType = 'blips' | 'likes';
 
