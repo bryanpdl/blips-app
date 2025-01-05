@@ -2,20 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@layer base {
+  body {
+    @apply antialiased;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  /* Remove focus outlines */
+  textarea:focus,
+  input:focus,
+  button:focus {
+    @apply outline-none ring-0;
+  }
+
+  /* Custom scrollbar styles */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-dark;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-primary/50 rounded-full hover:bg-primary/70 transition-colors;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .btn-primary {
+    @apply bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-lg transition duration-200;
+  }
+
+  .btn-secondary {
+    @apply bg-transparent border border-gray-600 hover:border-primary text-white py-2 px-4 rounded-lg transition duration-200;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-2 rounded-lg bg-gray-dark border border-gray-600 focus:border-primary outline-none transition;
+  }
 }
