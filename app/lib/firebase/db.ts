@@ -156,7 +156,7 @@ export async function createBlip(
 ): Promise<Blip> {
   const blipsRef = collection(db, 'blips');
   
-  const blipData: Omit<FirebaseBlipData, 'createdAt'> & { createdAt: any } = {
+  const blipData: Omit<FirebaseBlipData, 'createdAt'> & { createdAt: Timestamp } = {
     content,
     contentLower: content.toLowerCase(),
     authorId,

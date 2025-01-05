@@ -195,7 +195,13 @@ export default function BlipComposer({ onBlipCreated }: BlipComposerProps) {
             >
               <XMarkIcon className="h-5 w-5 text-white" />
             </button>
-            <img src={imagePreview} alt="Preview" className="max-h-64 rounded-lg" />
+            <Image
+              src={imagePreview}
+              alt="Image preview"
+              width={500}
+              height={300}
+              className="max-h-[300px] w-full object-cover rounded-xl"
+            />
           </div>
         )}
 

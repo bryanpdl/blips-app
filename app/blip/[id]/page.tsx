@@ -22,7 +22,7 @@ import {
   type Comment,
   type SearchUserResult 
 } from '../../lib/firebase/db';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { renderTextWithMentions } from '../../lib/utils';
 import MentionInput from '../../components/common/MentionInput';
@@ -34,9 +34,9 @@ interface Author {
   photoURL: string;
 }
 
-function formatDate(timestamp: any): string {
+function formatDate(timestamp: Timestamp | Date): string {
   if (!timestamp) return '';
-  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  const date = 'toDate' in timestamp ? timestamp.toDate() : timestamp;
   if (isNaN(date.getTime())) return '';
   return date.toLocaleDateString();
 }

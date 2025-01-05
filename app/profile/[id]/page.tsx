@@ -18,6 +18,7 @@ import ProtectedRoute from '../../components/auth/ProtectedRoute';
 import Navbar from '../../components/navigation/Navbar';
 import Link from 'next/link';
 import Image from 'next/image';
+import { Timestamp } from 'firebase/firestore';
 
 type TabType = 'blips' | 'likes';
 
@@ -66,9 +67,9 @@ export default function Profile() {
         
         // Combine and sort blips and reblips by date
         const allBlips = [...blips, ...reblipped].sort((a, b) => {
-          const dateA = a.createdAt instanceof Date ? a.createdAt : (a.createdAt as any).toDate();
-          const dateB = b.createdAt instanceof Date ? b.createdAt : (b.createdAt as any).toDate();
-          return dateB.getTime() - dateA.getTime();
+          const dateA = a.createdAt;
+          const dateB = b.createdAt;
+          return dateB.toDate().getTime() - dateA.toDate().getTime();
         });
         
         setUserBlips(allBlips);

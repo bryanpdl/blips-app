@@ -46,8 +46,9 @@ export default function UsernameSetup() {
       } else {
         setError('Username is already taken or invalid. Please try another one.');
       }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
+    } catch (error: unknown) {
+      console.error('Error setting username:', error);
+      setError('Failed to set username. Please try again.');
     } finally {
       setIsLoading(false);
     }
