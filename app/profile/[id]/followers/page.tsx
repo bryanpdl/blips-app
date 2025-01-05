@@ -7,7 +7,7 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import ProtectedRoute from '../../../components/auth/ProtectedRoute';
 import Navbar from '../../../components/navigation/Navbar';
 import { useAuth } from '../../../contexts/AuthContext';
-import { getUserProfile, followUser, unfollowUser } from '../../../lib/firebase/db';
+import { getUserProfile, followUser, unfollowUser, getUserProfileByUsername } from '../../../lib/firebase/db';
 import type { UserProfile } from '../../../lib/firebase/db';
 import Image from 'next/image';
 
@@ -25,8 +25,15 @@ export default function Followers() {
     async function loadFollowers() {
       if (!id) return;
       try {
-        const profile = await getUserProfile(id as string);
-        if (!profile) return;
+        // First try to get profile by username
+        const profile = await getUserProfileByUsername(id as string);
+        if (!profile) {
+          // If not found by username, try getting by ID
+          const profileById = await getUserProfile(id as string);
+          if (!profileById) return;
+          setFollowers([]); // Reset followers list
+          return;
+        }
 
         // Get current user's following list to check follow status
         const currentUserProfile = user ? await getUserProfile(user.uid) : null;

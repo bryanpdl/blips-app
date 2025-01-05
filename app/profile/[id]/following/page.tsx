@@ -7,7 +7,7 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import ProtectedRoute from '../../../components/auth/ProtectedRoute';
 import Navbar from '../../../components/navigation/Navbar';
 import { useAuth } from '../../../contexts/AuthContext';
-import { getUserProfile, followUser, unfollowUser } from '../../../lib/firebase/db';
+import { getUserProfile, followUser, unfollowUser, getUserProfileByUsername } from '../../../lib/firebase/db';
 import type { UserProfile } from '../../../lib/firebase/db';
 import Image from 'next/image';
 
@@ -25,8 +25,19 @@ export default function Following() {
     async function loadFollowing() {
       if (!id) return;
       try {
-        const profile = await getUserProfile(id as string);
-        if (!profile) return;
+        // First try to get profile by username
+        const profile = await getUserProfileByUsername(id as string);
+        if (!profile) {
+          // If not found by username, try getting by ID
+          const profileById = await getUserProfile(id as string);
+          if (!profileById) return;
+          setFollowing([]); // Reset following list
+          return;
+        }
+
+        // Get current user's following list to check follow status
+        const currentUserProfile = user ? await getUserProfile(user.uid) : null;
+        const currentUserFollowing = currentUserProfile?.following || [];
 
         // Get all following users' profiles
         const followingProfiles = await Promise.all(
@@ -35,7 +46,7 @@ export default function Following() {
             if (!userProfile) return null;
             return {
               ...userProfile,
-              isFollowing: user ? profile.following.includes(userId) : false
+              isFollowing: currentUserFollowing.includes(userId)
             };
           })
         );
@@ -116,7 +127,7 @@ export default function Following() {
                         onClick={() => handleFollowToggle(followedUser.id, followedUser.isFollowing)}
                         className={`px-4 py-1.5 rounded-lg transition-colors ${
                           followedUser.isFollowing
-                            ? 'bg-gray-800 text-white hover:bg-gray-700'
+                            ? 'bg-gray-darker text-white hover:bg-gray-darker/80'
                             : 'bg-primary text-white hover:bg-primary/90'
                         }`}
                       >

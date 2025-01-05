@@ -716,4 +716,18 @@ export async function getUserProfileByUsername(username: string): Promise<UserPr
     console.error('Error getting user profile by username:', error);
     return null;
   }
+}
+
+export async function getGlobalBlips(): Promise<Blip[]> {
+  const blipsQuery = query(
+    collection(db, 'blips'),
+    orderBy('createdAt', 'desc'),
+    limit(50)
+  );
+
+  const blipsSnap = await getDocs(blipsQuery);
+  return blipsSnap.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as Blip[];
 } 
