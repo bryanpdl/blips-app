@@ -10,17 +10,15 @@ import {
   limit,
   getDocs,
   addDoc,
-  serverTimestamp,
   increment,
   arrayUnion,
   arrayRemove,
   writeBatch,
   deleteDoc,
+  Timestamp,
 } from 'firebase/firestore';
 import {
   ref,
-  uploadBytes,
-  getDownloadURL,
   deleteObject,
 } from 'firebase/storage';
 import { db, storage } from '../firebase';
@@ -37,8 +35,8 @@ export interface UserProfile {
   followers: string[];
   following: string[];
   blipsCount: number;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
 export interface Blip {
@@ -50,7 +48,7 @@ export interface Blip {
   likes: string[];
   reblips: string[];
   comments: number;
-  createdAt: Date;
+  createdAt: Timestamp;
 }
 
 export interface Comment {
@@ -58,7 +56,7 @@ export interface Comment {
   blipId: string;
   content: string;
   authorId: string;
-  createdAt: Date;
+  createdAt: Timestamp;
 }
 
 export interface SearchUserResult extends UserProfile {
@@ -72,12 +70,13 @@ export interface Notification {
   toUserId: string;
   blipId?: string;
   content?: string;
-  createdAt: Date;
+  createdAt: Timestamp;
   read: boolean;
 }
 
-interface FirebaseUserData extends Omit<UserProfile, 'id'> {}
-interface FirebaseBlipData extends Omit<Blip, 'id'> {}
+// Remove empty interfaces and use type aliases instead
+type FirebaseUserData = Omit<UserProfile, 'id'>;
+type FirebaseBlipData = Omit<Blip, 'id'>;
 
 // User Operations
 export async function createUserProfile(user: User) {
@@ -94,8 +93,8 @@ export async function createUserProfile(user: User) {
       followers: [],
       following: [],
       blipsCount: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: Timestamp.fromDate(new Date()),
+      updatedAt: Timestamp.fromDate(new Date()),
     };
 
     await setDoc(userRef, userData);
@@ -114,11 +113,11 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   } as UserProfile;
 }
 
-export async function updateUserProfile(userId: string, data: any): Promise<void> {
+export async function updateUserProfile(userId: string, data: Partial<Omit<UserProfile, 'id' | 'createdAt' | 'updatedAt'>>): Promise<void> {
   const userRef = doc(db, 'users', userId);
   await updateDoc(userRef, {
     ...data,
-    updatedAt: serverTimestamp(),
+    updatedAt: Timestamp.fromDate(new Date()),
   });
 }
 
@@ -164,7 +163,7 @@ export async function createBlip(
     likes: [],
     reblips: [],
     comments: 0,
-    createdAt: serverTimestamp(),
+    createdAt: Timestamp.fromDate(new Date()),
   };
 
   // Only add imageUrl if it exists
@@ -182,7 +181,7 @@ export async function createBlip(
   return {
     id: docRef.id,
     ...blipData,
-    createdAt: new Date(),
+    createdAt: Timestamp.fromDate(new Date()),
   };
 }
 
@@ -253,7 +252,7 @@ export async function createComment(
     blipId,
     content,
     authorId: userId,
-    createdAt: serverTimestamp(),
+    createdAt: Timestamp.fromDate(new Date()),
   });
 
   await updateDoc(blipRef, {
@@ -359,7 +358,7 @@ export async function setUsername(userId: string, username: string): Promise<boo
   const userRef = doc(db, 'users', userId);
   await updateDoc(userRef, {
     username: username.toLowerCase(),
-    updatedAt: serverTimestamp(),
+    updatedAt: Timestamp.fromDate(new Date()),
   });
 
   return true;
@@ -624,15 +623,14 @@ export async function createNotification(
   // Don't create notification if user is interacting with their own content
   if (fromUserId === toUserId) return;
 
-  const notificationData: any = {
+  const notificationData: Omit<Notification, 'id'> = {
     type,
     fromUserId,
     toUserId,
-    createdAt: serverTimestamp(),
+    createdAt: Timestamp.fromDate(new Date()),
     read: false,
   };
 
-  // Only add optional fields if they are defined
   if (blipId) {
     notificationData.blipId = blipId;
   }

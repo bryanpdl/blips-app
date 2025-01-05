@@ -9,6 +9,7 @@ import Navbar from '../../../components/navigation/Navbar';
 import { useAuth } from '../../../contexts/AuthContext';
 import { getUserProfile, followUser, unfollowUser } from '../../../lib/firebase/db';
 import type { UserProfile } from '../../../lib/firebase/db';
+import Image from 'next/image';
 
 interface FollowerUser extends UserProfile {
   isFollowing: boolean;
@@ -100,14 +101,18 @@ export default function Followers() {
                 <div key={follower.id} className="bg-gray-dark rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <Link href={`/profile/${follower.id}`} className="flex items-center gap-3 flex-1">
-                      <img
-                        src={follower.photoURL}
-                        alt={follower.name}
-                        className="w-12 h-12 rounded-full"
-                      />
-                      <div>
-                        <h3 className="font-semibold">{follower.name}</h3>
-                        <p className="text-sm text-gray-500">@{follower.username}</p>
+                      <div className="flex items-center gap-3">
+                        <Image
+                          src={follower.photoURL}
+                          alt={follower.name}
+                          width={48}
+                          height={48}
+                          className="w-12 h-12 rounded-full"
+                        />
+                        <div>
+                          <h3 className="font-semibold">{follower.name}</h3>
+                          <p className="text-sm text-gray-500">@{follower.username}</p>
+                        </div>
                       </div>
                     </Link>
                     {follower.id !== user?.uid && (

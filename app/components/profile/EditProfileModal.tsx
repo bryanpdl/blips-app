@@ -55,8 +55,9 @@ export default function EditProfileModal({ isOpen, onClose, profile, onUpdate }:
       });
 
       onClose();
-    } catch (err) {
-      setError('Failed to update profile');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Failed to update profile');
     } finally {
       setIsLoading(false);
     }

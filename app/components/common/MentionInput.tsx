@@ -5,7 +5,6 @@ import React, { useRef, useEffect, forwardRef } from 'react';
 interface MentionInputProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  onMentionSelect?: (username: string) => void;
   placeholder?: string;
   className?: string;
   maxLength?: number;
@@ -14,7 +13,6 @@ interface MentionInputProps {
 const MentionInput = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
   value,
   onChange,
-  onMentionSelect,
   placeholder,
   className = '',
   maxLength,

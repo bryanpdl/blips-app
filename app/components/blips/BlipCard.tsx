@@ -9,11 +9,12 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getUserProfile, type Blip, deleteBlip, likeBlip, reblipBlip } from '../../lib/firebase/db';
 import { motion, AnimatePresence } from 'framer-motion';
 import { renderTextWithMentions } from '../../lib/utils';
+import { Timestamp } from 'firebase/firestore';
 
 interface BlipCardProps {
   blip: Blip;
   showActions?: boolean;
-  onBlipUpdate?: (updatedBlip: Blip) => void;
+  onBlipUpdate?: (updatedBlip: Blip | null) => void;
 }
 
 interface AuthorInfo {
@@ -23,15 +24,9 @@ interface AuthorInfo {
   photoURL: string;
 }
 
-function formatDate(timestamp: any): string {
+function formatDate(timestamp: Timestamp): string {
   if (!timestamp) return '';
-  
-  // Handle Firestore Timestamp
-  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-  
-  if (isNaN(date.getTime())) return '';
-  
-  return date.toLocaleDateString();
+  return timestamp.toDate().toLocaleDateString();
 }
 
 export default function BlipCard({ blip: initialBlip, showActions = true, onBlipUpdate }: BlipCardProps) {
@@ -67,8 +62,7 @@ export default function BlipCard({ blip: initialBlip, showActions = true, onBlip
       await deleteBlip(blip.id, user.uid);
       // Let parent component know about deletion
       if (onBlipUpdate) {
-        // Pass null to indicate deletion
-        onBlipUpdate(null as any);
+        onBlipUpdate(null);
       }
     } catch (error) {
       console.error('Error deleting blip:', error);

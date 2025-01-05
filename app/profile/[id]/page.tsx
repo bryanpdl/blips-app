@@ -17,6 +17,7 @@ import EditProfileModal from '../../components/profile/EditProfileModal';
 import ProtectedRoute from '../../components/auth/ProtectedRoute';
 import Navbar from '../../components/navigation/Navbar';
 import Link from 'next/link';
+import Image from 'next/image';
 
 type TabType = 'blips' | 'likes';
 
@@ -106,9 +107,11 @@ export default function Profile() {
         <main className="max-w-2xl mx-auto p-4">
           <div className="bg-gray-dark rounded-lg p-4 mb-6">
             <div className="flex items-start gap-4">
-              <img
+              <Image
                 src={userProfile.photoURL}
                 alt={userProfile.name}
+                width={96}
+                height={96}
                 className="w-24 h-24 rounded-full"
               />
               <div className="flex-1">

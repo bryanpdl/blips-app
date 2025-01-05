@@ -8,6 +8,7 @@ import BlipCard from '../components/blips/BlipCard';
 import { type Blip, type UserProfile, searchBlips, searchUsers, followUser, unfollowUser } from '../lib/firebase/db';
 import { useAuth } from '../contexts/AuthContext';
 import Link from 'next/link';
+import Image from 'next/image';
 
 type SearchTab = 'blips' | 'people';
 
@@ -135,14 +136,18 @@ export default function Search() {
                   <div key={userResult.id} className="bg-gray-dark rounded-lg p-4">
                     <div className="flex items-center justify-between">
                       <Link href={`/profile/${userResult.id}`} className="flex items-center gap-3 flex-1">
-                        <img
-                          src={userResult.photoURL}
-                          alt={userResult.name}
-                          className="w-12 h-12 rounded-full"
-                        />
-                        <div>
-                          <h3 className="font-semibold">{userResult.name}</h3>
-                          <p className="text-sm text-gray-500">@{userResult.username}</p>
+                        <div className="flex items-center gap-3">
+                          <Image
+                            src={userResult.photoURL}
+                            alt={userResult.name}
+                            width={48}
+                            height={48}
+                            className="w-12 h-12 rounded-full"
+                          />
+                          <div>
+                            <h3 className="font-semibold">{userResult.name}</h3>
+                            <p className="text-sm text-gray-500">@{userResult.username}</p>
+                          </div>
                         </div>
                       </Link>
                       {userResult.id !== user?.uid && (
