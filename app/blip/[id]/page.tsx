@@ -366,7 +366,7 @@ export default function BlipPage() {
                   value={newComment}
                   onChange={handleCommentChange}
                   placeholder="Write a comment..."
-                  className="w-full bg-background rounded-lg p-3 text-white placeholder-gray-light resize-none min-h-[100px]"
+                  className="w-full bg-gray-dark/50 text-white placeholder-gray-light resize-none min-h-[100px] rounded-lg p-3"
                   maxLength={500}
                 />
                 {showMentionDropdown && mentionResults.length > 0 && (

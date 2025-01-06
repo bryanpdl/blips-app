@@ -10,6 +10,7 @@ import { getUserProfile, type Blip, deleteBlip, likeBlip, reblipBlip } from '../
 import { motion, AnimatePresence } from 'framer-motion';
 import { renderTextWithMentions } from '../../lib/utils';
 import { Timestamp } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 
 interface BlipCardProps {
   blip: Blip;
@@ -37,6 +38,7 @@ export default function BlipCard({ blip: initialBlip, showActions = true, onBlip
   const [isReblipping, setIsReblipping] = useState(false);
   const [blip, setBlip] = useState<Blip>(initialBlip);
   const { user } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     async function fetchAuthor() {
@@ -126,9 +128,12 @@ export default function BlipCard({ blip: initialBlip, showActions = true, onBlip
 
   return (
     <>
-      <div className="bg-gray-dark hover:bg-gray-dark/80 rounded-lg p-4 mb-4 transition-colors">
+      <div 
+        className="bg-gray-dark hover:bg-gray-dark/80 rounded-lg p-4 mb-4 transition-colors cursor-pointer"
+        onClick={() => router.push(`/blip/${blip.id}`)}
+      >
         <div className="flex space-x-3">
-          <Link href={`/profile/${author.username || author.id}`} className="shrink-0">
+          <Link href={`/profile/${author.username || author.id}`} className="shrink-0" onClick={e => e.stopPropagation()}>
             <Image
               src={author.photoURL}
               alt={author.name}
@@ -141,7 +146,7 @@ export default function BlipCard({ blip: initialBlip, showActions = true, onBlip
             <div className="flex flex-col">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-1">
-                  <Link href={`/profile/${author.username || author.id}`} className="font-semibold text-white hover:underline">
+                  <Link href={`/profile/${author.username || author.id}`} className="font-semibold text-white hover:underline" onClick={e => e.stopPropagation()}>
                     {author.name}
                   </Link>
                   <span className="text-gray-500">·</span>
@@ -151,7 +156,11 @@ export default function BlipCard({ blip: initialBlip, showActions = true, onBlip
                 </div>
                 {isOwnBlip && (
                   <button
-                    onClick={handleDelete}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleDelete();
+                    }}
                     disabled={isDeleting}
                     className="text-gray-500 hover:text-red-500 transition-colors"
                   >
@@ -160,41 +169,53 @@ export default function BlipCard({ blip: initialBlip, showActions = true, onBlip
                 )}
               </div>
               {author.username && (
-                <Link href={`/profile/${author.username}`} className="text-sm text-gray-500 hover:underline">
+                <Link href={`/profile/${author.username}`} className="text-sm text-gray-500 hover:underline" onClick={e => e.stopPropagation()}>
                   @{author.username}
                 </Link>
               )}
             </div>
-            <Link href={`/blip/${blip.id}`} className="block mt-2 hover:opacity-75 transition-opacity">
+            <Link href={`/blip/${blip.id}`} className="block mt-2">
               <p className="text-white whitespace-pre-wrap break-words">
                 {renderTextWithMentions(blip.content, true)}
               </p>
+              {blip.imageUrl && (
+                <div 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsImageModalOpen(true);
+                  }}
+                  className="mt-2 rounded-xl overflow-hidden max-w-[500px] max-h-[250px] cursor-pointer"
+                >
+                  <Image
+                    src={blip.imageUrl}
+                    alt="Blip image"
+                    width={500}
+                    height={300}
+                    className="object-cover w-full h-[250px] hover:opacity-90 transition-opacity"
+                  />
+                </div>
+              )}
             </Link>
-            {blip.imageUrl && (
-              <div 
-                onClick={(e) => {
-                  e.preventDefault();
-                  setIsImageModalOpen(true);
-                }}
-                className="mt-2 rounded-xl overflow-hidden max-w-[500px] max-h-[250px] cursor-pointer"
-              >
-                <Image
-                  src={blip.imageUrl}
-                  alt="Blip image"
-                  width={500}
-                  height={300}
-                  className="object-cover w-full h-[250px] hover:opacity-90 transition-opacity"
-                />
-              </div>
-            )}
             {showActions && (
               <div className="flex items-center mt-3 space-x-6 text-gray-500">
-                <Link href={`/blip/${blip.id}`} className="flex items-center space-x-2 hover:text-primary transition-colors">
+                <button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    router.push(`/blip/${blip.id}`);
+                  }}
+                  className="flex items-center space-x-2 hover:text-primary transition-colors"
+                >
                   <ChatBubbleLeftIcon className="h-5 w-5" />
                   <span>{blip.comments}</span>
-                </Link>
+                </button>
                 <button 
-                  onClick={handleReblip}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleReblip();
+                  }}
                   disabled={isReblipping}
                   className={`flex items-center space-x-2 transition-colors ${
                     hasReblipped ? 'text-green-500' : 'hover:text-green-500'
@@ -208,7 +229,11 @@ export default function BlipCard({ blip: initialBlip, showActions = true, onBlip
                   <span>{blip.reblips?.length || 0}</span>
                 </button>
                 <button 
-                  onClick={handleLike}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleLike();
+                  }}
                   disabled={isLiking}
                   className={`flex items-center space-x-2 transition-colors ${
                     hasLiked ? 'text-red-500' : 'hover:text-red-500'

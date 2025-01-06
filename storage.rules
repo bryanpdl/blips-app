@@ -10,5 +10,9 @@ service firebase.storage {
       allow read: if true;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
+    match /avatars/{imageId} {
+      allow read: if true;  // Anyone can view avatars
+      allow write: if request.auth != null && imageId.matches(request.auth.uid + '_.*');  // Only allow users to upload their own avatars
+    }
   }
 } 

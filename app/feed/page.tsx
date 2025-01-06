@@ -51,6 +51,7 @@ export default function Feed() {
       <div className="min-h-screen bg-background pb-16 sm:pb-0 sm:pt-16">
         <Navbar />
         <main className="max-w-2xl mx-auto p-4">
+          <h1 className="text-2xl font-extrabold mb-2 opacity-100 sm:opacity-0 transition-opacity duration-300">blips</h1>
           <BlipComposer onBlipCreated={(newBlip) => setBlips(prev => [newBlip, ...prev])} />
           
           <div className="flex gap-4 mb-6">

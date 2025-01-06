@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
@@ -10,7 +10,8 @@ import {
   getUserBlips, 
   getUserLikedBlips, 
   getUserReblippedBlips,
-  getUserProfileByUsername 
+  getUserProfileByUsername,
+  updateUserProfile
 } from '../../lib/firebase/db';
 import BlipCard from '../../components/blips/BlipCard';
 import EditProfileModal from '../../components/profile/EditProfileModal';
@@ -18,6 +19,9 @@ import ProtectedRoute from '../../components/auth/ProtectedRoute';
 import Navbar from '../../components/navigation/Navbar';
 import Link from 'next/link';
 import Image from 'next/image';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../../lib/firebase';
+import { CameraIcon } from '@heroicons/react/24/outline';
 
 type TabType = 'blips' | 'likes';
 
@@ -32,6 +36,8 @@ export default function Profile() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('blips');
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isOwnProfile = user?.uid === userProfile?.id;
 
@@ -64,8 +70,16 @@ export default function Profile() {
           isOwnProfile ? getUserLikedBlips(profile?.id || id as string) : Promise.resolve([])
         ]);
         
-        // Combine and sort blips and reblips by date
-        const allBlips = [...blips, ...reblipped].sort((a, b) => {
+        // Combine blips and reblips, removing duplicates by blip ID
+        const blipMap = new Map();
+        [...blips, ...reblipped].forEach(blip => {
+          if (!blipMap.has(blip.id)) {
+            blipMap.set(blip.id, blip);
+          }
+        });
+        
+        // Convert map back to array and sort by date
+        const allBlips = Array.from(blipMap.values()).sort((a, b) => {
           const dateA = a.createdAt;
           const dateB = b.createdAt;
           return dateB.toDate().getTime() - dateA.toDate().getTime();
@@ -98,6 +112,34 @@ export default function Profile() {
     });
   };
 
+  const handleAvatarClick = () => {
+    if (!isOwnProfile) return;
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !userProfile) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      // Upload new image
+      const imageRef = ref(storage, `avatars/${user.uid}_${Date.now()}`);
+      const uploadResult = await uploadBytes(imageRef, file);
+      const photoURL = await getDownloadURL(uploadResult.ref);
+
+      // Update user profile
+      const updatedProfile = { ...userProfile, photoURL };
+      await updateUserProfile(user.uid, { photoURL });
+      setUserProfile(updatedProfile);
+    } catch (error) {
+      console.error('Error updating avatar:', error);
+      alert('Failed to update avatar');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
   if (!userProfile) return null;
 
   return (
@@ -107,13 +149,37 @@ export default function Profile() {
         <main className="max-w-2xl mx-auto p-4">
           <div className="bg-gray-dark rounded-lg p-4 mb-6">
             <div className="flex items-start gap-4">
-              <Image
-                src={userProfile.photoURL}
-                alt={userProfile.name}
-                width={96}
-                height={96}
-                className="w-24 h-24 rounded-full"
-              />
+              <div className="relative">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleAvatarChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <div 
+                  className={`relative ${isOwnProfile ? 'cursor-pointer group' : ''}`}
+                  onClick={handleAvatarClick}
+                >
+                  <Image
+                    src={userProfile.photoURL}
+                    alt={userProfile.name}
+                    width={96}
+                    height={96}
+                    className="w-24 h-24 rounded-full"
+                  />
+                  {isOwnProfile && (
+                    <div className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <CameraIcon className="h-6 w-6 text-white" />
+                    </div>
+                  )}
+                  {isUploadingAvatar && (
+                    <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="flex-1">
                 <div className="flex items-start justify-between">
                   <div>

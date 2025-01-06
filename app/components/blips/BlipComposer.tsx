@@ -152,11 +152,11 @@ export default function BlipComposer({ onBlipCreated }: BlipComposerProps) {
             value={content}
             onChange={handleContentChange}
             placeholder="What's happening?"
-            className="w-full bg-transparent text-white placeholder-gray-light resize-none min-h-[100px]"
+            className="w-full bg-transparent text-white placeholder-gray-light resize-none min-h-[100px] rounded-lg"
             maxLength={500}
           />
           {showMentionDropdown && mentionResults.length > 0 && (
-            <div className="absolute z-10 mt-1 w-64 bg-gray-dark rounded-lg shadow-lg border border-gray-700 max-h-48 overflow-y-auto">
+            <div className="absolute z-10 mt-1 w-64 bg-gray-dark/90 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 max-h-48 overflow-y-auto">
               {mentionResults.map((user) => (
                 <button
                   key={user.id}

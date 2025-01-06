@@ -41,7 +41,7 @@ export default function Navbar() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-gray-600 sm:top-0 sm:bottom-auto sm:border-t-0 sm:border-b">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/85 backdrop-blur-sm border-t border-gray-600 sm:top-0 sm:bottom-auto sm:border-t-0 sm:border-b">
       <div className="max-w-2xl mx-auto px-4">
         <div className="flex justify-around sm:justify-between items-center h-16">
           <div className="hidden sm:flex items-center gap-1">
