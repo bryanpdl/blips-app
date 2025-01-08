@@ -55,6 +55,17 @@ export default function BlipCard({ blip: initialBlip, showActions = true, onBlip
     fetchAuthor();
   }, [blip.authorId]);
 
+  useEffect(() => {
+    if (isImageModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isImageModalOpen]);
+
   const handleDelete = async () => {
     if (!user || isDeleting) return;
     if (!confirm('Are you sure you want to delete this blip?')) return;
@@ -252,33 +263,37 @@ export default function BlipCard({ blip: initialBlip, showActions = true, onBlip
         </div>
       </div>
 
-      <AnimatePresence>
-        {isImageModalOpen && blip.imageUrl && (
-          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setIsImageModalOpen(false)}>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative max-w-[90vw] max-h-[90vh]"
-              onClick={e => e.stopPropagation()}
-            >
-              <button
-                onClick={() => setIsImageModalOpen(false)}
-                className="absolute -top-4 -right-4 bg-gray-dark rounded-full p-2 text-white hover:bg-gray-700 transition-colors"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-              <Image
-                src={blip.imageUrl}
-                alt="Full size image"
-                width={1200}
-                height={800}
-                className="rounded-lg object-contain max-h-[90vh] w-auto"
-              />
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <div className="top-0">
+        <AnimatePresence>
+          {isImageModalOpen && blip.imageUrl && (
+            <div className="fixed inset-0 m-0 p-0 bg-black/80 z-50" onClick={() => setIsImageModalOpen(false)}>
+              <div className="w-full h-full flex items-center justify-center p-4">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="relative max-w-[90vw] max-h-[90vh]"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <button
+                    onClick={() => setIsImageModalOpen(false)}
+                    className="absolute -top-4 -right-4 bg-gray-dark rounded-full p-2 text-white hover:bg-gray-700 transition-colors"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                  <Image
+                    src={blip.imageUrl}
+                    alt="Full size image"
+                    width={1200}
+                    height={800}
+                    className="rounded-lg object-contain max-h-[90vh] w-auto"
+                  />
+                </motion.div>
+              </div>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
     </>
   );
 } 

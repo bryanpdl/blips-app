@@ -15,6 +15,7 @@ const config: Config = {
         "gray-dark": "#201E25",
         "gray-darker": "#17151B",
         "gray-light": "#9CA3AF",
+        "gray-input": "#2A282F",
       },
       fontFamily: {
         sans: ["var(--font-schibsted)"],

@@ -4,26 +4,23 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeftIcon, HeartIcon, ChatBubbleLeftIcon, ArrowPathRoundedSquareIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { HeartIcon as HeartIconSolid, ArrowPathRoundedSquareIcon as ArrowPathRoundedSquareIconSolid } from '@heroicons/react/24/solid';
+import { ArrowLeftIcon, HeartIcon, ChatBubbleLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import ProtectedRoute from '../../components/auth/ProtectedRoute';
 import Navbar from '../../components/navigation/Navbar';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
-  getBlip, 
   getUserProfile, 
   createComment, 
-  getBlipComments, 
-  likeBlip, 
-  reblipBlip, 
+  getComment,
+  getCommentReplies,
+  toggleCommentLike,
   searchUsers, 
   createNotification,
-  toggleCommentLike,
-  type Blip, 
   type Comment,
   type SearchUserResult 
 } from '../../lib/firebase/db';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { renderTextWithMentions } from '../../lib/utils';
 import MentionInput from '../../components/common/MentionInput';
@@ -35,26 +32,16 @@ interface Author {
   photoURL: string;
 }
 
-function formatDate(timestamp: Timestamp | Date): string {
-  if (!timestamp) return '';
-  const date = 'toDate' in timestamp ? timestamp.toDate() : timestamp;
-  if (isNaN(date.getTime())) return '';
-  return date.toLocaleDateString();
-}
-
-export default function BlipPage() {
+export default function CommentPage() {
   const { id } = useParams();
   const router = useRouter();
   const { user } = useAuth();
-  const [blip, setBlip] = useState<Blip | null>(null);
+  const [comment, setComment] = useState<Comment | null>(null);
   const [author, setAuthor] = useState<Author | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [commentAuthors, setCommentAuthors] = useState<Map<string, Author>>(new Map());
-  const [newComment, setNewComment] = useState('');
-  const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
+  const [replies, setReplies] = useState<Comment[]>([]);
+  const [replyAuthors, setReplyAuthors] = useState<Map<string, Author>>(new Map());
+  const [newReply, setNewReply] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLiking, setIsLiking] = useState(false);
-  const [isReblipping, setIsReblipping] = useState(false);
   const [mentionSearch, setMentionSearch] = useState('');
   const [mentionResults, setMentionResults] = useState<SearchUserResult[]>([]);
   const [showMentionDropdown, setShowMentionDropdown] = useState(false);
@@ -62,19 +49,19 @@ export default function BlipPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    async function loadBlipData() {
+    async function loadCommentData() {
       if (!id) return;
       
-      // Fetch blip
-      const blipData = await getBlip(id as string);
-      if (!blipData) {
+      // Fetch comment
+      const commentData = await getComment(id as string);
+      if (!commentData) {
         router.push('/feed');
         return;
       }
-      setBlip(blipData);
+      setComment(commentData);
 
-      // Fetch blip author
-      const authorProfile = await getUserProfile(blipData.authorId);
+      // Fetch comment author
+      const authorProfile = await getUserProfile(commentData.authorId);
       if (authorProfile) {
         setAuthor({
           id: authorProfile.id,
@@ -84,17 +71,17 @@ export default function BlipPage() {
         });
       }
 
-      // Fetch comments
-      const blipComments = await getBlipComments(id as string);
-      setComments(blipComments);
+      // Fetch replies
+      const commentReplies = await getCommentReplies(id as string);
+      setReplies(commentReplies);
 
-      // Fetch comment authors
+      // Fetch reply authors
       const authors = new Map<string, Author>();
       await Promise.all(
-        blipComments.map(async (comment) => {
-          const profile = await getUserProfile(comment.authorId);
+        commentReplies.map(async (reply) => {
+          const profile = await getUserProfile(reply.authorId);
           if (profile) {
-            authors.set(comment.authorId, {
+            authors.set(reply.authorId, {
               id: profile.id,
               name: profile.name,
               username: profile.username,
@@ -103,10 +90,10 @@ export default function BlipPage() {
           }
         })
       );
-      setCommentAuthors(authors);
+      setReplyAuthors(authors);
     }
 
-    loadBlipData();
+    loadCommentData();
   }, [id, router]);
 
   useEffect(() => {
@@ -119,9 +106,9 @@ export default function BlipPage() {
     }
   }, [mentionSearch, user?.uid]);
 
-  const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleReplyChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value;
-    setNewComment(newContent);
+    setNewReply(newContent);
 
     // Handle mention search
     const cursorPos = e.target.selectionStart;
@@ -142,15 +129,14 @@ export default function BlipPage() {
   const insertMention = (username: string) => {
     if (!cursorPosition) return;
 
-    const beforeMention = newComment.slice(0, cursorPosition).replace(/@\w*$/, '');
-    const afterMention = newComment.slice(cursorPosition);
-    const updatedComment = `${beforeMention}@${username}${afterMention}`;
+    const beforeMention = newReply.slice(0, cursorPosition).replace(/@\w*$/, '');
+    const afterMention = newReply.slice(cursorPosition);
+    const updatedReply = `${beforeMention}@${username}${afterMention}`;
     
-    setNewComment(updatedComment);
+    setNewReply(updatedReply);
     setShowMentionDropdown(false);
     setMentionSearch('');
 
-    // Focus back on textarea and set cursor position after the mention
     if (textareaRef.current) {
       const newCursorPos = beforeMention.length + username.length + 1;
       textareaRef.current.focus();
@@ -158,17 +144,17 @@ export default function BlipPage() {
     }
   };
 
-  const handleSubmitComment = async (e: React.FormEvent) => {
+  const handleSubmitReply = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !blip || !newComment.trim() || isSubmitting) return;
+    if (!user || !comment || !newReply.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
       // Extract mentions from content
-      const mentions = newComment.match(/@(\w+)/g) || [];
+      const mentions = newReply.match(/@(\w+)/g) || [];
       const uniqueMentions = [...new Set(mentions)];
 
-      await createComment(blip.id, user.uid, newComment, replyingTo?.id);
+      await createComment(comment.blipId, user.uid, newReply, comment.id);
       
       // Create notifications for mentions
       if (uniqueMentions.length > 0) {
@@ -183,21 +169,21 @@ export default function BlipPage() {
             'mention',
             user.uid,
             doc.id,
-            blip.id,
-            newComment
+            comment.blipId,
+            newReply
           );
         });
       }
 
-      // Fetch updated comments
-      const updatedComments = await getBlipComments(blip.id);
-      setComments(updatedComments);
+      // Fetch updated replies
+      const updatedReplies = await getCommentReplies(comment.id);
+      setReplies(updatedReplies);
 
-      // Add new comment author if needed
-      if (!commentAuthors.has(user.uid)) {
+      // Add new reply author if needed
+      if (!replyAuthors.has(user.uid)) {
         const profile = await getUserProfile(user.uid);
         if (profile) {
-          setCommentAuthors(prev => new Map(prev).set(user.uid, {
+          setReplyAuthors(prev => new Map(prev).set(user.uid, {
             id: profile.id,
             name: profile.name,
             username: profile.username,
@@ -206,50 +192,61 @@ export default function BlipPage() {
         }
       }
 
-      setNewComment('');
-      setReplyingTo(null);
+      setNewReply('');
     } catch (error) {
-      console.error('Error posting comment:', error);
+      console.error('Error posting reply:', error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleLikeComment = async (comment: Comment) => {
+  const handleLikeComment = async (commentId: string) => {
     if (!user) return;
-    await toggleCommentLike(comment.id, user.uid);
+    await toggleCommentLike(commentId, user.uid);
     
-    // Update comment in state
-    const updatedComments = comments.map(c => {
-      if (c.id === comment.id) {
-        const likes = c.likes || [];
+    // Update comment in state if it's the main comment
+    if (commentId === comment?.id) {
+      setComment(prev => {
+        if (!prev) return null;
+        const likes = prev.likes || [];
         const isLiked = likes.includes(user.uid);
         return {
-          ...c,
+          ...prev,
           likes: isLiked 
             ? likes.filter(id => id !== user.uid)
             : [...likes, user.uid]
         };
-      }
-      return c;
-    });
-    setComments(updatedComments);
+      });
+    } else {
+      // Update reply in state
+      setReplies(prev => prev.map(reply => {
+        if (reply.id === commentId) {
+          const likes = reply.likes || [];
+          const isLiked = likes.includes(user.uid);
+          return {
+            ...reply,
+            likes: isLiked 
+              ? likes.filter(id => id !== user.uid)
+              : [...likes, user.uid]
+          };
+        }
+        return reply;
+      }));
+    }
   };
 
-  const renderComment = (comment: Comment, depth = 0) => {
-    const commentAuthor = commentAuthors.get(comment.authorId);
-    if (!commentAuthor) return null;
+  const renderReply = (reply: Comment) => {
+    const replyAuthor = replyAuthors.get(reply.authorId);
+    if (!replyAuthor) return null;
 
-    const isLiked = user && (comment.likes || []).includes(user.uid);
-    const replies = comments.filter(c => c.parentId === comment.id);
-    const hasReplies = replies.length > 0;
+    const isLiked = user && (reply.likes || []).includes(user.uid);
 
     return (
-      <div key={comment.id} className={`flex space-x-3 ${depth > 0 ? 'ml-12' : ''}`}>
-        <Link href={`/profile/${commentAuthor.username || commentAuthor.id}`} className="shrink-0">
+      <div key={reply.id} className="flex space-x-3">
+        <Link href={`/profile/${replyAuthor.username || replyAuthor.id}`} className="shrink-0">
           <Image
-            src={commentAuthor.photoURL}
-            alt={commentAuthor.name}
+            src={replyAuthor.photoURL}
+            alt={replyAuthor.name}
             width={40}
             height={40}
             className="rounded-full"
@@ -257,99 +254,39 @@ export default function BlipPage() {
         </Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-1">
-            <Link href={`/profile/${commentAuthor.username || commentAuthor.id}`} className="font-semibold text-white hover:underline">
-              {commentAuthor.name}
+            <Link href={`/profile/${replyAuthor.username || replyAuthor.id}`} className="font-semibold text-white hover:underline">
+              {replyAuthor.name}
             </Link>
             <span className="text-gray-500">·</span>
             <span className="text-gray-500 text-sm">
-              {formatDate(comment.createdAt)}
+              {new Date(reply.createdAt.toDate()).toLocaleDateString()}
             </span>
           </div>
-          {commentAuthor.username && (
-            <Link href={`/profile/${commentAuthor.username}`} className="text-sm text-gray-500 hover:underline">
-              @{commentAuthor.username}
+          {replyAuthor.username && (
+            <Link href={`/profile/${replyAuthor.username}`} className="text-sm text-gray-500 hover:underline">
+              @{replyAuthor.username}
             </Link>
           )}
           <p className="mt-1 text-white whitespace-pre-wrap break-words">
-            {renderTextWithMentions(comment.content)}
+            {renderTextWithMentions(reply.content)}
           </p>
           <div className="flex items-center gap-4 mt-2">
             <button
-              onClick={() => setReplyingTo(comment)}
-              className="text-gray-500 hover:text-primary transition-colors text-sm flex items-center gap-1"
-            >
-              <ChatBubbleLeftIcon className="h-4 w-4" />
-              <span>{comment.replies}</span>
-            </button>
-            <button
-              onClick={() => handleLikeComment(comment)}
+              onClick={() => handleLikeComment(reply.id)}
               className={`${isLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'} transition-colors text-sm flex items-center gap-1`}
             >
               {isLiked ? <HeartIconSolid className="h-4 w-4" /> : <HeartIcon className="h-4 w-4" />}
-              <span>{(comment.likes || []).length}</span>
+              <span>{(reply.likes || []).length}</span>
             </button>
           </div>
-          {hasReplies && (
-            <Link 
-              href={`/comment/${comment.id}`} 
-              className="inline-block mt-2 text-primary hover:underline text-sm"
-            >
-              View {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
-            </Link>
-          )}
         </div>
       </div>
     );
   };
 
-  const handleLike = async () => {
-    if (!user || !blip || isLiking) return;
-    setIsLiking(true);
-    try {
-      await likeBlip(blip.id, user.uid);
-      // Update local state
-      setBlip(prev => {
-        if (!prev) return null;
-        const likes = prev.likes || [];
-        const hasLiked = likes.includes(user.uid);
-        return {
-          ...prev,
-          likes: hasLiked ? likes.filter(id => id !== user.uid) : [...likes, user.uid]
-        };
-      });
-    } catch (error) {
-      console.error('Error liking blip:', error);
-    } finally {
-      setIsLiking(false);
-    }
-  };
+  if (!comment || !author) return null;
 
-  const handleReblip = async () => {
-    if (!user || !blip || isReblipping) return;
-    setIsReblipping(true);
-    try {
-      await reblipBlip(blip.id, user.uid);
-      // Update local state
-      setBlip(prev => {
-        if (!prev) return null;
-        const reblips = prev.reblips || [];
-        const hasReblipped = reblips.includes(user.uid);
-        return {
-          ...prev,
-          reblips: hasReblipped ? reblips.filter(id => id !== user.uid) : [...reblips, user.uid]
-        };
-      });
-    } catch (error) {
-      console.error('Error reblipping:', error);
-    } finally {
-      setIsReblipping(false);
-    }
-  };
-
-  if (!blip || !author) return null;
-
-  const hasLiked = blip.likes?.includes(user?.uid || '');
-  const hasReblipped = blip.reblips?.includes(user?.uid || '');
+  const isLiked = user && (comment.likes || []).includes(user.uid);
 
   return (
     <ProtectedRoute>
@@ -368,7 +305,7 @@ export default function BlipPage() {
 
           <div className="bg-gray-dark rounded-lg p-4 mb-4">
             <div className="flex space-x-3">
-              <Link href={`/profile/${author.id}`} className="shrink-0">
+              <Link href={`/profile/${author.username || author.id}`} className="shrink-0">
                 <Image
                   src={author.photoURL}
                   alt={author.name}
@@ -385,7 +322,7 @@ export default function BlipPage() {
                     </Link>
                     <span className="text-gray-500">·</span>
                     <span className="text-gray-500 text-sm">
-                      {formatDate(blip.createdAt)}
+                      {new Date(comment.createdAt.toDate()).toLocaleDateString()}
                     </span>
                   </div>
                   {author.username && (
@@ -396,52 +333,26 @@ export default function BlipPage() {
                 </div>
                 <div className="mt-2">
                   <p className="text-white whitespace-pre-wrap break-words">
-                    {renderTextWithMentions(blip.content)}
+                    {renderTextWithMentions(comment.content)}
                   </p>
-                  {blip.imageUrl && (
-                    <div className="mt-2 rounded-xl overflow-hidden">
-                      <Image
-                        src={blip.imageUrl}
-                        alt="Blip image"
-                        width={500}
-                        height={300}
-                        className="object-cover w-full"
-                      />
-                    </div>
-                  )}
                 </div>
                 <div className="flex items-center mt-4 space-x-6 text-gray-500">
                   <div className="flex items-center space-x-2">
                     <ChatBubbleLeftIcon className="h-5 w-5" />
-                    <span>{comments.length}</span>
+                    <span>{replies.length}</span>
                   </div>
                   <button 
-                    onClick={handleReblip}
-                    disabled={isReblipping}
+                    onClick={() => handleLikeComment(comment.id)}
                     className={`flex items-center space-x-2 transition-colors ${
-                      hasReblipped ? 'text-green-500' : 'hover:text-green-500'
+                      isLiked ? 'text-red-500' : 'hover:text-red-500'
                     }`}
                   >
-                    {hasReblipped ? (
-                      <ArrowPathRoundedSquareIconSolid className="h-5 w-5" />
-                    ) : (
-                      <ArrowPathRoundedSquareIcon className="h-5 w-5" />
-                    )}
-                    <span>{blip.reblips?.length || 0}</span>
-                  </button>
-                  <button 
-                    onClick={handleLike}
-                    disabled={isLiking}
-                    className={`flex items-center space-x-2 transition-colors ${
-                      hasLiked ? 'text-red-500' : 'hover:text-red-500'
-                    }`}
-                  >
-                    {hasLiked ? (
+                    {isLiked ? (
                       <HeartIconSolid className="h-5 w-5" />
                     ) : (
                       <HeartIcon className="h-5 w-5" />
                     )}
-                    <span>{blip.likes?.length || 0}</span>
+                    <span>{(comment.likes || []).length}</span>
                   </button>
                 </div>
               </div>
@@ -449,31 +360,14 @@ export default function BlipPage() {
           </div>
 
           <div className="bg-gray-dark rounded-lg p-4">
-            <form onSubmit={handleSubmitComment} className="mb-6">
-              {replyingTo && (
-                <div className="mb-2 text-sm text-gray-500 flex items-center justify-between">
-                  <span>
-                    Replying to{' '}
-                    <span className="text-primary">
-                      @{commentAuthors.get(replyingTo.authorId)?.username || 'user'}
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setReplyingTo(null)}
-                    className="text-gray-500 hover:text-white transition-colors"
-                  >
-                    <XMarkIcon className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
+            <form onSubmit={handleSubmitReply} className="mb-6">
               <div className="relative">
                 <MentionInput
                   ref={textareaRef}
-                  value={newComment}
-                  onChange={handleCommentChange}
-                  placeholder={replyingTo ? "Write your reply..." : "Write a comment..."}
-                  className="w-full bg-gray-input text-white placeholder-gray-light resize-none min-h-[100px] rounded-lg p-3"
+                  value={newReply}
+                  onChange={handleReplyChange}
+                  placeholder="Write a reply..."
+                  className="w-full bg-gray-inputtext-white placeholder-gray-light resize-none min-h-[100px] rounded-lg p-3"
                   maxLength={500}
                 />
                 {showMentionDropdown && mentionResults.length > 0 && (
@@ -504,21 +398,19 @@ export default function BlipPage() {
                 )}
               </div>
               <div className="flex justify-between items-center mt-2">
-                <span className="text-sm text-gray-500">{newComment.length}/500</span>
+                <span className="text-sm text-gray-500">{newReply.length}/500</span>
                 <button
                   type="submit"
-                  disabled={!newComment.trim() || isSubmitting}
+                  disabled={!newReply.trim() || isSubmitting}
                   className="btn-primary px-4 disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Posting...' : replyingTo ? 'Reply' : 'Post'}
+                  {isSubmitting ? 'Posting...' : 'Reply'}
                 </button>
               </div>
             </form>
 
             <div className="space-y-4">
-              {comments
-                .filter(comment => !comment.parentId) // Only show top-level comments
-                .map(comment => renderComment(comment))}
+              {replies.map(reply => renderReply(reply))}
             </div>
           </div>
         </main>

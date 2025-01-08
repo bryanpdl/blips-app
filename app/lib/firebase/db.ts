@@ -16,6 +16,7 @@ import {
   writeBatch,
   deleteDoc,
   Timestamp,
+  serverTimestamp,
 } from 'firebase/firestore';
 import {
   ref,
@@ -54,9 +55,12 @@ export interface Blip {
 export interface Comment {
   id: string;
   blipId: string;
-  content: string;
   authorId: string;
+  content: string;
   createdAt: Timestamp;
+  likes?: string[];
+  replies?: number;
+  parentId?: string;
 }
 
 export interface SearchUserResult extends UserProfile {
@@ -236,39 +240,65 @@ export async function getFeedBlips(userId: string): Promise<Blip[]> {
 }
 
 // Comment Operations
-export async function createComment(
-  blipId: string,
-  userId: string,
-  content: string
-): Promise<string> {
-  const blipRef = doc(db, 'blips', blipId);
-  const blipSnap = await getDoc(blipRef);
-  
-  if (!blipSnap.exists()) {
-    throw new Error('Blip not found');
+export async function createComment(blipId: string, authorId: string, content: string, parentId?: string) {
+  try {
+    const commentRef = await addDoc(collection(db, 'comments'), {
+      blipId,
+      authorId,
+      content,
+      createdAt: serverTimestamp(),
+      likes: [],
+      replies: 0,
+      ...(parentId && { parentId }),
+    });
+
+    // Get the blip to notify its author
+    const blipDoc = await getDoc(doc(db, 'blips', blipId));
+    if (blipDoc.exists()) {
+      const blip = { id: blipDoc.id, ...blipDoc.data() } as Blip;
+      
+      // Create notification for blip author if it's not their own comment
+      if (blip.authorId !== authorId) {
+        await createNotification(
+          'comment',
+          authorId,
+          blip.authorId,
+          blipId,
+          content
+        );
+      }
+    }
+
+    // If this is a reply, increment the parent comment's replies count
+    if (parentId) {
+      const parentRef = doc(db, 'comments', parentId);
+      await updateDoc(parentRef, {
+        replies: increment(1)
+      });
+
+      // Get the parent comment to notify its author
+      const parentDoc = await getDoc(parentRef);
+      if (parentDoc.exists()) {
+        const parentComment = { id: parentDoc.id, ...parentDoc.data() } as Comment;
+        
+        // Create notification for parent comment author if it's not their own reply
+        if (parentComment.authorId !== authorId) {
+          await createNotification(
+            'comment',
+            authorId,
+            parentComment.authorId,
+            blipId,
+            content
+          );
+        }
+      }
+    }
+
+    return commentRef.id;
+  } catch (error) {
+    console.error('Error creating comment:', error);
+    throw error;
   }
-
-  const commentRef = await addDoc(collection(db, 'comments'), {
-    blipId,
-    content,
-    authorId: userId,
-    createdAt: Timestamp.fromDate(new Date()),
-  });
-
-  await updateDoc(blipRef, {
-    comments: increment(1),
-  });
-
-  // Create notification for blip author
-  await createNotification(
-    'comment',
-    userId,
-    blipSnap.data().authorId,
-    blipId,
-    content
-  );
-
-  return commentRef.id;
 }
 
 export async function getBlipComments(blipId: string): Promise<Comment[]> {
@@ -283,6 +313,46 @@ export async function getBlipComments(blipId: string): Promise<Comment[]> {
     id: doc.id,
     ...doc.data(),
   })) as Comment[];
+}
+
+export async function toggleCommentLike(commentId: string, userId: string) {
+  try {
+    const commentRef = doc(db, 'comments', commentId);
+    const commentDoc = await getDoc(commentRef);
+    
+    if (!commentDoc.exists()) {
+      throw new Error('Comment not found');
+    }
+
+    const comment = { id: commentDoc.id, ...commentDoc.data() } as Comment;
+    const likes = comment.likes || [];
+    const isLiked = likes.includes(userId);
+
+    if (isLiked) {
+      // Unlike
+      await updateDoc(commentRef, {
+        likes: arrayRemove(userId)
+      });
+    } else {
+      // Like
+      await updateDoc(commentRef, {
+        likes: arrayUnion(userId)
+      });
+
+      // Create notification for comment author if it's not their own like
+      if (comment.authorId !== userId) {
+        await createNotification(
+          'like',
+          userId,
+          comment.authorId,
+          comment.blipId
+        );
+      }
+    }
+  } catch (error) {
+    console.error('Error toggling comment like:', error);
+    throw error;
+  }
 }
 
 // Like Operations
@@ -730,4 +800,30 @@ export async function getGlobalBlips(): Promise<Blip[]> {
     id: doc.id,
     ...doc.data(),
   })) as Blip[];
+}
+
+export async function getComment(commentId: string): Promise<Comment | null> {
+  try {
+    const commentDoc = await getDoc(doc(db, 'comments', commentId));
+    if (!commentDoc.exists()) return null;
+    return { id: commentDoc.id, ...commentDoc.data() } as Comment;
+  } catch (error) {
+    console.error('Error getting comment:', error);
+    return null;
+  }
+}
+
+export async function getCommentReplies(commentId: string): Promise<Comment[]> {
+  try {
+    const repliesQuery = query(
+      collection(db, 'comments'),
+      where('parentId', '==', commentId),
+      orderBy('createdAt', 'desc')
+    );
+    const repliesSnapshot = await getDocs(repliesQuery);
+    return repliesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Comment);
+  } catch (error) {
+    console.error('Error getting comment replies:', error);
+    return [];
+  }
 } 

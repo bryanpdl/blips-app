@@ -29,7 +29,7 @@ const MentionInput = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     };
 
     // Extract background color and border radius from className to apply to the container
-    const bgClass = className.match(/bg-[^\s]*/)?.[0] || '';
+    const bgClass = className.match(/bg-[^\s]*/)?.[0] || 'bg-gray-input';
     const roundedClass = className.match(/rounded[^\s]*/)?.[0] || '';
 
     // Remove padding, background, and border radius from the inner elements

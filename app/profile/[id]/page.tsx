@@ -11,7 +11,9 @@ import {
   getUserLikedBlips, 
   getUserReblippedBlips,
   getUserProfileByUsername,
-  updateUserProfile
+  updateUserProfile,
+  followUser,
+  unfollowUser
 } from '../../lib/firebase/db';
 import BlipCard from '../../components/blips/BlipCard';
 import EditProfileModal from '../../components/profile/EditProfileModal';
@@ -38,6 +40,7 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState<TabType>('blips');
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isFollowing, setIsFollowing] = useState(false);
 
   const isOwnProfile = user?.uid === userProfile?.id;
 
@@ -62,6 +65,12 @@ export default function Profile() {
           setUserProfile(profileById);
         } else {
           setUserProfile(profile);
+        }
+
+        // Check if current user is following this profile
+        if (user) {
+          const currentUserProfile = await getUserProfile(user.uid);
+          setIsFollowing(currentUserProfile?.following.includes(profile?.id || id as string) || false);
         }
 
         const [blips, reblipped, liked] = await Promise.all([
@@ -95,7 +104,7 @@ export default function Profile() {
       }
     }
     loadProfile();
-  }, [id, isOwnProfile, router]);
+  }, [id, isOwnProfile, router, user]);
 
   const handleBlipUpdate = (updatedBlip: Blip | null, index: number) => {
     if (!updatedBlip) {
@@ -140,6 +149,32 @@ export default function Profile() {
     }
   };
 
+  const handleFollowToggle = async () => {
+    if (!user || !userProfile || isOwnProfile) return;
+
+    try {
+      if (isFollowing) {
+        await unfollowUser(user.uid, userProfile.id);
+        setIsFollowing(false);
+        // Update followers count in UI
+        setUserProfile(prev => prev ? {
+          ...prev,
+          followers: prev.followers.filter(id => id !== user.uid)
+        } : null);
+      } else {
+        await followUser(user.uid, userProfile.id);
+        setIsFollowing(true);
+        // Update followers count in UI
+        setUserProfile(prev => prev ? {
+          ...prev,
+          followers: [...prev.followers, user.uid]
+        } : null);
+      }
+    } catch (error) {
+      console.error('Failed to toggle follow:', error);
+    }
+  };
+
   if (!userProfile) return null;
 
   return (
@@ -148,8 +183,8 @@ export default function Profile() {
         <Navbar />
         <main className="max-w-2xl mx-auto p-4">
           <div className="bg-gray-dark rounded-lg p-4 mb-6">
-            <div className="flex items-start gap-4">
-              <div className="relative">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+              <div className="relative self-center sm:self-start">
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -166,7 +201,7 @@ export default function Profile() {
                     alt={userProfile.name}
                     width={96}
                     height={96}
-                    className="w-24 h-24 rounded-full"
+                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-full"
                   />
                   {isOwnProfile && (
                     <div className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -180,32 +215,36 @@ export default function Profile() {
                   )}
                 </div>
               </div>
-              <div className="flex-1">
-                <div className="flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-0">
                   <div>
-                    <h1 className="text-2xl font-bold text-white">{userProfile.name}</h1>
+                    <h1 className="text-xl sm:text-2xl font-bold text-white truncate">{userProfile.name}</h1>
                     {userProfile.username && (
-                      <p className="text-gray-500">@{userProfile.username}</p>
+                      <p className="text-gray-500 truncate">@{userProfile.username}</p>
                     )}
                   </div>
                   {isOwnProfile ? (
                     <button
                       onClick={() => setIsEditModalOpen(true)}
-                      className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-gray-700 transition-colors"
+                      className="w-full sm:w-auto px-4 py-2 bg-primary btn-primary text-white rounded-lg  text-sm sm:text-base"
                     >
                       Edit Profile
                     </button>
                   ) : (
                     <button
-                      onClick={() => {/* TODO: Implement follow/unfollow */}}
-                      className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors"
+                      onClick={handleFollowToggle}
+                      className={`w-full sm:w-auto px-4 py-2 ${
+                        isFollowing 
+                          ? 'bg-gray-darker hover:bg-gray-darker/80' 
+                          : 'bg-primary hover:bg-primary/90'
+                      } text-white rounded-lg transition-colors text-sm sm:text-base`}
                     >
-                      Follow
+                      {isFollowing ? 'Following' : 'Follow'}
                     </button>
                   )}
                 </div>
-                <p className="mt-2 text-gray-300">{userProfile.bio}</p>
-                <div className="flex gap-6 mt-4">
+                <p className="mt-2 text-gray-300 break-words">{userProfile.bio}</p>
+                <div className="flex flex-wrap gap-4 sm:gap-6 mt-4">
                   <Link href={`/profile/${userProfile.username}/followers`} className="hover:opacity-80 transition-opacity">
                     <span className="font-bold text-white">{userProfile.followers.length}</span>
                     <span className="text-gray-500 ml-1">Followers</span>

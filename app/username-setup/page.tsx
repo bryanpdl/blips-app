@@ -80,7 +80,7 @@ export default function UsernameSetup() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsernameValue(e.target.value.toLowerCase())}
-                className="w-full pl-8 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-primary"
+                className="w-full pl-8 pr-3 py-2 bg-gray-input border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-primary"
                 placeholder="username"
                 required
                 pattern="[a-zA-Z0-9_]{3,20}"

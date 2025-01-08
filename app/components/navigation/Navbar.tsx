@@ -61,8 +61,8 @@ export default function Navbar() {
                   href={item.href}
                   className={`relative flex flex-col sm:flex-row items-center justify-center p-2 rounded-lg transition-colors sm:gap-2 ${
                     isActive
-                      ? 'text-primary'
-                      : 'text-gray-light hover:text-white hover:bg-gray-700/50'
+                      ? 'text-white bg-primary'
+                      : 'text-gray-light hover:text-white'
                   }`}
                 >
                   <div className="relative">

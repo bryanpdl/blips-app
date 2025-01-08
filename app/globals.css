@@ -38,6 +38,6 @@
   }
 
   .input-field {
-    @apply w-full px-4 py-2 rounded-lg bg-gray-dark border border-gray-600 focus:border-primary outline-none transition;
+    @apply w-full px-4 py-2 rounded-lg bg-gray-input border border-gray-600 focus:border-primary outline-none transition;
   }
 }

@@ -114,7 +114,7 @@ export default function EditProfileModal({ isOpen, onClose, profile, onUpdate }:
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              className="w-full px-3 py-2 bg-background rounded-lg text-white"
+              className="w-full px-3 py-2 bg-gray-input rounded-lg text-white"
               rows={3}
               maxLength={160}
             />

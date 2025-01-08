@@ -152,7 +152,7 @@ export default function BlipComposer({ onBlipCreated }: BlipComposerProps) {
             value={content}
             onChange={handleContentChange}
             placeholder="What's happening?"
-            className="w-full bg-transparent text-white placeholder-gray-light resize-none min-h-[100px] rounded-lg"
+            className="w-full bg-gray-input text-white placeholder-gray-light resize-none min-h-[100px] rounded-lg"
             maxLength={500}
           />
           {showMentionDropdown && mentionResults.length > 0 && (
